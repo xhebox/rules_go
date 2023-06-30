@@ -430,12 +430,13 @@ def _go_tool_binary_impl(ctx):
     if sdk.goos == "windows":
         gopath = ctx.actions.declare_directory("gopath")
         gocache = ctx.actions.declare_directory("gocache")
-        cmd = "@echo off\nset GOMAXPROCS=1\nset GOCACHE=%cd%\\{gocache}\nset GOPATH=%cd%\\{gopath}\n{go} build -o {out} -trimpath {srcs}".format(
+        cmd = "@echo off\nmove {mod} .\nset GOMAXPROCS=1\nset GOCACHE=%cd%\\{gocache}\nset GOPATH=%cd%\\{gopath}\n{go} build -o {out} -trimpath {srcs}".format(
             gopath = gopath.path,
             gocache = gocache.path,
             go = sdk.go.path.replace("/", "\\"),
             out = out.path,
             srcs = " ".join([f.path for f in ctx.files.srcs]),
+            mod = " ".join([f.path for f in ctx.files.mod]),
         )
         bat = ctx.actions.declare_file(name + ".bat")
         ctx.actions.write(
@@ -444,20 +445,21 @@ def _go_tool_binary_impl(ctx):
         )
         ctx.actions.run(
             executable = bat,
-            inputs = sdk.headers + sdk.tools + sdk.srcs + ctx.files.srcs + [sdk.go],
+            inputs = sdk.headers + sdk.tools + sdk.srcs + ctx.files.srcs + [sdk.go] + ctx.files.mod,
             outputs = [out, gopath, gocache],
             mnemonic = "GoToolchainBinaryBuild",
         )
     else:
         # Note: GOPATH is needed for Go 1.16.
-        cmd = "GOMAXPROCS=1 GOCACHE=$(mktemp -d) GOPATH=$(mktemp -d) {go} build -o {out} -trimpath {srcs}".format(
+        cmd = "mv {mod} .; GOMAXPROCS=1 GOCACHE=$(mktemp -d) GOPATH=$(mktemp -d) {go} build -o {out} -trimpath {srcs}".format(
             go = sdk.go.path,
             out = out.path,
             srcs = " ".join([f.path for f in ctx.files.srcs]),
+            mod = " ".join([f.path for f in ctx.files.mod]),
         )
         ctx.actions.run_shell(
             command = cmd,
-            inputs = sdk.headers + sdk.tools + sdk.srcs + sdk.libs + ctx.files.srcs + [sdk.go],
+            inputs = sdk.headers + sdk.tools + sdk.srcs + sdk.libs + ctx.files.srcs + [sdk.go] + ctx.files.mod,
             outputs = [out],
             mnemonic = "GoToolchainBinaryBuild",
         )
@@ -473,6 +475,10 @@ go_tool_binary = rule(
         "srcs": attr.label_list(
             allow_files = True,
             doc = "Source files for the binary. Must be in 'package main'.",
+        ),
+        "mod": attr.label_list(
+            allow_files = True,
+            doc = "go.mod and go.sum",
         ),
         "sdk": attr.label(
             mandatory = True,

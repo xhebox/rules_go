@@ -44,6 +44,7 @@ bzl_library(
         ":utils",
         "//go/private:mode",
         "@bazel_skylib//lib:shell",
+        "@com_github_pingcap_failpoint//code",
     ],
 )
 
