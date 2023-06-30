@@ -10,6 +10,12 @@ load(
 )
 
 bool_flag(
+    name = "failpoint",
+    build_setting_default = False,
+    visibility = ["//visibility:public"],
+)
+
+bool_flag(
     name = "static",
     build_setting_default = False,
     visibility = ["//visibility:public"],

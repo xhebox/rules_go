@@ -125,6 +125,7 @@ go_config(
     msan = "//go/config:msan",
     pure = "//go/config:pure",
     race = "//go/config:race",
+    failpoint = "//go/config:failpoint",
     stamp = select({
         "//go/private:stamp": True,
         "//conditions:default": False,

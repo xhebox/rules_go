@@ -528,6 +528,7 @@ def go_context(ctx, attr = None):
         env = env,
         tags = tags,
         stamp = mode.stamp,
+        failpoint = mode.failpoint,
         label = ctx.label,
         cover_format = mode.cover_format,
         # Action generators
@@ -826,6 +827,7 @@ def _go_config_impl(ctx):
         static = ctx.attr.static[BuildSettingInfo].value,
         race = ctx.attr.race[BuildSettingInfo].value,
         msan = ctx.attr.msan[BuildSettingInfo].value,
+        failpoint = ctx.attr.failpoint[BuildSettingInfo].value,
         pure = ctx.attr.pure[BuildSettingInfo].value,
         strip = ctx.attr.strip,
         debug = ctx.attr.debug[BuildSettingInfo].value,
@@ -856,6 +858,10 @@ go_config = rule(
         "pure": attr.label(
             mandatory = True,
             providers = [BuildSettingInfo],
+        ),
+        "failpoint": attr.label(
+          mandatory = True,
+          providers = [BuildSettingInfo],
         ),
         "strip": attr.bool(mandatory = True),
         "debug": attr.label(

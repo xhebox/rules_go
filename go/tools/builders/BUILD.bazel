@@ -47,6 +47,15 @@ go_test(
 )
 
 filegroup(
+    name = "builder_mod",
+    srcs = [
+      "go.mod",
+      "go.sum",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
     name = "builder_srcs",
     srcs = [
         "ar.go",

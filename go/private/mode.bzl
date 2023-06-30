@@ -84,6 +84,7 @@ def get_mode(ctx, go_toolchain, cgo_context_info, go_config_info):
     )
     race = _ternary(go_config_info.race if go_config_info else "off")
     msan = _ternary(go_config_info.msan if go_config_info else "off")
+    failpoint = _ternary(go_config_info.failpoint if go_config_info else "off")
     strip = go_config_info.strip if go_config_info else False
     stamp = go_config_info.stamp if go_config_info else False
     debug = go_config_info.debug if go_config_info else False
@@ -123,6 +124,7 @@ def get_mode(ctx, go_toolchain, cgo_context_info, go_config_info):
         gc_linkopts = gc_linkopts,
         strip = strip,
         stamp = stamp,
+        failpoint = failpoint,
         debug = debug,
         goos = goos,
         goarch = goarch,
