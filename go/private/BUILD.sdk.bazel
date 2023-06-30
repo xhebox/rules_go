@@ -51,6 +51,7 @@ go_sdk(
 go_tool_binary(
     name = "builder",
     srcs = ["@io_bazel_rules_go//go/tools/builders:builder_srcs"],
+    mod = ["@io_bazel_rules_go//go/tools/builders:builder_mod"],
     sdk = ":go_sdk",
 )
 
