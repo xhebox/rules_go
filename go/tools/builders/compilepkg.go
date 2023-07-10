@@ -22,6 +22,8 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"go/parser"
+	"go/token"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -32,6 +34,8 @@ import (
 
 	"github.com/pingcap/failpoint/code"
 )
+
+const failpointBindingFileName = "binding__failpoint_binding__.go"
 
 type nogoResult int
 
@@ -111,15 +115,75 @@ func compilePkg(args []string) error {
 			return err
 		}
 		rewriter := code.NewRewriter(cwd)
-		if err := rewriter.Rewrite(); err != nil {
+		var files []string
+		genWalk := func(fn func(path string, info os.FileInfo, err error) error) func(path string, info os.FileInfo, err error) error {
+			var walkFn func(path string, info os.FileInfo, err error) error
+			walkFn = func(path string, info os.FileInfo, err error) error {
+				if err != nil {
+					return err
+				}
+				if info.Mode()&os.ModeSymlink == os.ModeSymlink {
+					finalPath, err := filepath.EvalSymlinks(path)
+					if err != nil {
+						return err
+					}
+					info, err := os.Lstat(finalPath)
+					if err != nil {
+						return fn(path, info, err)
+					}
+					if info.IsDir() {
+						return filepath.Walk(finalPath, walkFn)
+					}
+				}
+				return fn(path, info, err)
+			}
+			return walkFn
+		}
+
+		if err := filepath.Walk(cwd, genWalk(func(path string, info os.FileInfo, err error) error {
+			if info.IsDir() {
+				return nil
+			}
+			if !strings.HasSuffix(path, ".go") {
+				return nil
+			}
+			if strings.HasSuffix(path, failpointBindingFileName) {
+				return nil
+			}
+			// Will rewrite a file only if the file has imported "github.com/pingcap/failpoint"
+			fset := token.NewFileSet()
+			file, err := parser.ParseFile(fset, path, nil, parser.ImportsOnly)
+			if err != nil {
+				return err
+			}
+			if len(file.Imports) < 1 {
+				return nil
+			}
+			for _, imp := range file.Imports {
+				if strings.Trim(imp.Path.Value, "`\"") == "github.com/pingcap/failpoint" {
+					files = append(files, path)
+					break
+				}
+			}
+			return nil
+		})); err != nil {
 			return err
 		}
-		filepath.Walk(cwd, func(path string, info os.FileInfo, err error) error {
-			if strings.HasSuffix(path, "binding__failpoint_binding__.go") {
+
+		for _, file := range files {
+			if err := rewriter.RewriteFile(file); err != nil {
+				return err
+			}
+		}
+
+		if err := filepath.Walk(cwd, genWalk(func(path string, info os.FileInfo, err error) error {
+			if strings.HasSuffix(path, failpointBindingFileName) {
 				unfilteredSrcs = append(unfilteredSrcs, path)
 			}
 			return nil
-		})
+		})); err != nil {
+			return err
+		}
 	}
 
 	// Filter sources.
